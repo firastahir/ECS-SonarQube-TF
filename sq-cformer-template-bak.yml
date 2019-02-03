@@ -1,0 +1,502 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  vpcea6e588d:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.31.0.0/16
+      InstanceTenancy: default
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+  subnet71f2024d:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.32.0/20
+      AvailabilityZone: us-east-1e
+      VpcId:
+        Ref: vpcea6e588d
+  subnet1700b45e:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.0.0/20
+      AvailabilityZone: us-east-1d
+      VpcId:
+        Ref: vpcea6e588d
+  subnet4927dc12:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.16.0/20
+      AvailabilityZone: us-east-1a
+      VpcId:
+        Ref: vpcea6e588d
+  subnet3f189a33:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.80.0/20
+      AvailabilityZone: us-east-1f
+      VpcId:
+        Ref: vpcea6e588d
+  subnetaba3c4ce:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.64.0/20
+      AvailabilityZone: us-east-1b
+      VpcId:
+        Ref: vpcea6e588d
+  subnet2cdc1801:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.48.0/20
+      AvailabilityZone: us-east-1c
+      VpcId:
+        Ref: vpcea6e588d
+  igw742ce913:
+    Type: AWS::EC2::InternetGateway
+    Properties: {}
+  dopt0ee2b96a:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: ec2.internal
+      DomainNameServers:
+      - AmazonProvidedDNS
+  acl3ce30d5a:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId:
+        Ref: vpcea6e588d
+  rtb4e851428:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: vpcea6e588d
+  elbsonarqubeelb:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Subnets:
+      - Ref: subnet1700b45e
+      - Ref: subnet2cdc1801
+      - Ref: subnet4927dc12
+      - Ref: subnet71f2024d
+      - Ref: subnetaba3c4ce
+      HealthCheck:
+        HealthyThreshold: '10'
+        Interval: '30'
+        Target: TCP:9000
+        Timeout: '5'
+        UnhealthyThreshold: '2'
+      ConnectionDrainingPolicy:
+        Enabled: 'false'
+        Timeout: '300'
+      ConnectionSettings:
+        IdleTimeout: '60'
+      CrossZone: 'true'
+      SecurityGroups:
+      - Ref: sgsonarqubeelbsg
+      Listeners:
+      - InstancePort: '9000'
+        LoadBalancerPort: '80'
+        Protocol: HTTP
+        InstanceProtocol: HTTP
+      Tags:
+      - Key: Name
+        Value: sonarqube ECS Load Balancer
+  eip18205226243:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  asgsonarqubeasg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones:
+      - us-east-1a
+      - us-east-1b
+      - us-east-1c
+      - us-east-1d
+      - us-east-1e
+      Cooldown: '300'
+      DesiredCapacity: '1'
+      HealthCheckGracePeriod: '300'
+      HealthCheckType: ELB
+      MaxSize: '1'
+      MinSize: '1'
+      LaunchConfigurationName:
+        Ref: lcsonarqubeecscluster20190203222631870300000003
+      TerminationPolicies:
+      - Default
+  lcsonarqubeecscluster20190203222631870300000003:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-04351e12
+      InstanceType: m3.xlarge
+      IamInstanceProfile: sonarqube-ecs-host
+      InstanceMonitoring: 'true'
+      SecurityGroups:
+      - sonarqube-ecs-instance-sg
+  instancei059246316fd2257e3:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: ami-04351e12
+      InstanceType: m3.xlarge
+      Monitoring: 'true'
+  instancei0aec05194289412bb:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: ami-011b3ccf1bd6db744
+      InstanceType: t2.large
+      KeyName: jr-ha
+      Monitoring: 'false'
+      Tags:
+      - Key: Name
+        Value: JR2
+      NetworkInterfaces:
+      - DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId:
+          Ref: subnet1700b45e
+        PrivateIpAddresses:
+        - PrivateIpAddress: 172.31.11.99
+          Primary: 'true'
+        GroupSet:
+        - sg-89d8fcf3
+        - sg-0b4f4138763a66b87
+  instancei0065e95ed29b4c5e4:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: ami-011b3ccf1bd6db744
+      InstanceType: t2.large
+      KeyName: jr-ha
+      Monitoring: 'false'
+      Tags:
+      - Key: Name
+        Value: JR1
+      NetworkInterfaces:
+      - DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId:
+          Ref: subnet1700b45e
+        PrivateIpAddresses:
+        - PrivateIpAddress: 172.31.14.182
+          Primary: 'true'
+        GroupSet:
+        - sg-89d8fcf3
+        - sg-0b4f4138763a66b87
+  instancei0d939f92cd34d8738:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: ami-011b3ccf1bd6db744
+      InstanceType: t2.large
+      KeyName: jr-ha
+      Monitoring: 'false'
+      Tags:
+      - Key: Name
+        Value: JR_P
+      NetworkInterfaces:
+      - DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId:
+          Ref: subnet1700b45e
+        PrivateIpAddresses:
+        - PrivateIpAddress: 172.31.1.0
+          Primary: 'true'
+        GroupSet:
+        - sg-0b4f4138763a66b87
+  instancei008e82d2ef2d80eef:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      IamInstanceProfile: arn:aws:iam::155996975475:instance-profile/SecurityMonkeyInstanceProfile
+      ImageId: ami-0f9cf087c1f27d9b1
+      InstanceType: t2.small
+      KeyName: SecMonkeyKeyPair2019
+      Monitoring: 'false'
+      NetworkInterfaces:
+      - DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId:
+          Ref: subnet2cdc1801
+        PrivateIpAddresses:
+        - PrivateIpAddress: 172.31.59.51
+          Primary: 'true'
+        GroupSet:
+        - sg-00eb8619ca2418744
+        AssociatePublicIpAddress: 'true'
+  instancei0b4c73d2ab3164325:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      EbsOptimized: 'true'
+      ImageId: ami-9887c6e7
+      InstanceType: m4.xlarge
+      KeyName: adopdemojames
+      Monitoring: 'false'
+      Tags:
+      - Key: createdBy
+        Value: james.m.gress
+      NetworkInterfaces:
+      - DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId:
+          Ref: subnet2cdc1801
+        PrivateIpAddresses:
+        - PrivateIpAddress: 172.31.63.182
+          Primary: 'true'
+        GroupSet:
+        - sg-09e18452b0e33146a
+        AssociatePublicIpAddress: 'true'
+  instancei0681b253f49e5166f:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      EbsOptimized: 'true'
+      ImageId: ami-9887c6e7
+      InstanceType: m4.xlarge
+      KeyName: adopdemojames
+      Monitoring: 'false'
+      NetworkInterfaces:
+      - DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId:
+          Ref: subnet2cdc1801
+        PrivateIpAddresses:
+        - PrivateIpAddress: 172.31.63.54
+          Primary: 'true'
+        GroupSet:
+        - sg-008726848a8f0efc8
+        AssociatePublicIpAddress: 'true'
+  volumevol0a0bc7f7fe8b35cf5:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: us-east-1a
+      Encrypted: true
+      Size: '30'
+      SnapshotId: snap-0fcc977cfd11bff90
+      VolumeType: gp2
+  volumevol07e837655e586ffba:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: us-east-1a
+      Encrypted: true
+      Size: '30'
+      SnapshotId: snap-0beded98b14c449ee
+      VolumeType: gp2
+  volumevol0144ee25a2d3148c1:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: us-east-1c
+      Size: '22'
+      VolumeType: gp2
+  rdsterraform20190203222634154700000004:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '64'
+      AllowMajorVersionUpgrade: 'false'
+      AutoMinorVersionUpgrade: 'true'
+      DBInstanceClass: db.m4.large
+      Port: '3306'
+      StorageType: gp2
+      BackupRetentionPeriod: '0'
+      MasterUsername: sonarqube
+      MasterUserPassword: MyPassword
+      PreferredBackupWindow: 07:02-07:32
+      PreferredMaintenanceWindow: thu:03:22-thu:03:52
+      DBName: MyDatabase
+      Engine: mysql
+      EngineVersion: 5.7.23
+      LicenseModel: general-public-license
+      DBSubnetGroupName:
+        Ref: dbsubnetdefault
+      DBParameterGroupName:
+        Ref: dbpgsonarqubedbparams
+      VPCSecurityGroups:
+      - Ref: sgsonarqubedbsg
+      Tags:
+      - Key: Name
+        Value: sonarqube-db
+  dbsubnetdefault:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: default
+      SubnetIds:
+      - Ref: subnet71f2024d
+      - Ref: subnet1700b45e
+      - Ref: subnet4927dc12
+      - Ref: subnet3f189a33
+      - Ref: subnetaba3c4ce
+      - Ref: subnet2cdc1801
+  dbpgsonarqubedbparams:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Managed by Terraform
+      Family: mysql5.7
+      Parameters:
+        binlog_cache_size: '32768'
+        binlog_format: MIXED
+        default_password_lifetime: '0'
+        explicit_defaults_for_timestamp: '1'
+        gtid-mode: OFF_PERMISSIVE
+        innodb_buffer_pool_size: "{DBInstanceClassMemory*3/4}"
+      Tags:
+      - Key: Name
+        Value: sonarqube-db-params
+  sgsonarqubeelbsg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Managed by Terraform
+      VpcId:
+        Ref: vpcea6e588d
+  sgsonarqubeecsinstancesg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Managed by Terraform
+      VpcId:
+        Ref: vpcea6e588d
+  sgsonarqubedbsg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Managed by Terraform
+      VpcId:
+        Ref: vpcea6e588d
+  dbsgdefault:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      GroupDescription: default
+  acl1:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: 'true'
+      Protocol: "-1"
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId:
+        Ref: acl3ce30d5a
+  acl2:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: "-1"
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId:
+        Ref: acl3ce30d5a
+  subnetacl1:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId:
+        Ref: acl3ce30d5a
+      SubnetId:
+        Ref: subnet4927dc12
+  subnetacl2:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId:
+        Ref: acl3ce30d5a
+      SubnetId:
+        Ref: subnetaba3c4ce
+  subnetacl3:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId:
+        Ref: acl3ce30d5a
+      SubnetId:
+        Ref: subnet71f2024d
+  subnetacl4:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId:
+        Ref: acl3ce30d5a
+      SubnetId:
+        Ref: subnet3f189a33
+  subnetacl5:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId:
+        Ref: acl3ce30d5a
+      SubnetId:
+        Ref: subnet2cdc1801
+  subnetacl6:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId:
+        Ref: acl3ce30d5a
+      SubnetId:
+        Ref: subnet1700b45e
+  gw1:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: vpcea6e588d
+      InternetGatewayId:
+        Ref: igw742ce913
+  route1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId:
+        Ref: rtb4e851428
+      GatewayId:
+        Ref: igw742ce913
+    DependsOn: gw1
+  dchpassoc1:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId:
+        Ref: vpcea6e588d
+      DhcpOptionsId:
+        Ref: dopt0ee2b96a
+  ingress1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: sgsonarqubeelbsg
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      CidrIp: 0.0.0.0/0
+  ingress2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: sgsonarqubeecsinstancesg
+      IpProtocol: tcp
+      FromPort: '9000'
+      ToPort: '9000'
+      SourceSecurityGroupId:
+        Ref: sgsonarqubeelbsg
+      SourceSecurityGroupOwnerId: '155996975475'
+  ingress3:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: sgsonarqubedbsg
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Ref: sgsonarqubeecsinstancesg
+      SourceSecurityGroupOwnerId: '155996975475'
+  egress1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: sgsonarqubeelbsg
+      IpProtocol: "-1"
+      CidrIp: 0.0.0.0/0
+  egress2:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: sgsonarqubeecsinstancesg
+      IpProtocol: "-1"
+      CidrIp: 0.0.0.0/0
+Description: SQ template
+
